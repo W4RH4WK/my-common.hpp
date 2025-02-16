@@ -55,6 +55,38 @@ namespace MY {
 #endif
 
 ////////////////////////////////////////////////////////////
+// Primitives
+
+using i8 = int8_t;
+using u8 = uint8_t;
+using i16 = int16_t;
+using u16 = uint16_t;
+using i32 = int32_t;
+using u32 = uint32_t;
+using i64 = int64_t;
+using u64 = uint64_t;
+using usize = size_t;
+
+using f32 = float;
+using f64 = double;
+
+////////////////////////////////////////////////////////////
+// Type Utilities
+
+template <typename...>
+constexpr bool AlwaysFalse = false;
+
+template <typename...>
+constexpr bool AlwaysTrue = true;
+
+template <class... Ts>
+struct overload : Ts... {
+	using Ts::operator()...;
+};
+template <class... Ts>
+overload(Ts...) -> overload<Ts...>;
+
+////////////////////////////////////////////////////////////
 // Assertion
 //
 // These assertions are always enabled, the condition is always checked. An
@@ -114,7 +146,7 @@ extern thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 #define MY_LOG(severity, ...) \
 	do { \
 		if (::MY::onLog) { \
-			snprintf(::MY::g_logBuffer, MY_LOG_BUFFER_SIZE, __VA_ARGS__); \
+			::snprintf(::MY::g_logBuffer, MY_LOG_BUFFER_SIZE, __VA_ARGS__); \
 			::MY::onLog(severity, ::MY::g_logBuffer, MY_FILENAME, __LINE__); \
 		} \
 	} while (0)
@@ -141,7 +173,7 @@ extern OnLog onLog;
 // The defer utility allows code to be executed automatically at the end of the
 // enclosing scope.
 
-#define MY_DEFER(code) const auto MY_TEMPORARY(deferer) = ::MY::Deferer([&]() { code; });
+#define MY_DEFER(code) const auto MY_TEMPORARY(MY_deferer) = ::MY::Deferer([&]() { code; });
 
 template <typename T>
 struct Deferer {
@@ -151,39 +183,21 @@ struct Deferer {
 };
 
 ////////////////////////////////////////////////////////////
-// Type Utilities
+// Scalar Math
 
-template <typename...>
-constexpr bool AlwaysFalse = false;
+constexpr auto Pi = 3.14159265358979323846264338327950288;
 
-template <typename...>
-constexpr bool AlwaysTrue = true;
+template <typename T>
+constexpr T toRad(T deg)
+{
+	return deg * T(Pi) / T(180);
+}
 
-template <class... Ts>
-struct overload : Ts... {
-	using Ts::operator()...;
-};
-template <class... Ts>
-overload(Ts...) -> overload<Ts...>;
-
-////////////////////////////////////////////////////////////
-// Primitives
-
-using i8 = int8_t;
-using u8 = uint8_t;
-using i16 = int16_t;
-using u16 = uint16_t;
-using i32 = int32_t;
-using u32 = uint32_t;
-using i64 = int64_t;
-using u64 = uint64_t;
-using usize = size_t;
-
-using f32 = float;
-using f64 = double;
-
-////////////////////////////////////////////////////////////
-// Math
+template <typename T>
+constexpr T toDeg(T rad)
+{
+	return rad * T(180) / T(Pi);
+}
 
 template <typename T>
 constexpr T min(T a, T b)
@@ -227,6 +241,165 @@ constexpr T invLerp(T v, T lo, T hi)
 }
 
 ////////////////////////////////////////////////////////////
+// Vector 2D
+
+template <typename T>
+struct Vec2T {
+	constexpr Vec2T() = default;
+	constexpr Vec2T(T v) : x(v), y(v) {}
+	constexpr Vec2T(T x, T y) : x(x), y(y) {}
+
+	template <typename TT>
+	explicit constexpr operator Vec2T<TT>() const
+	{
+		return {TT(x), TT(y)};
+	}
+
+	constexpr double length() const { return sqrt(lengthSq()); }
+	constexpr double lengthSq() const { return double(x) * double(x) + double(y) * double(y); }
+
+	constexpr double ratio() const { return double(x) / double(y); }
+
+	constexpr void normalize() { clampLength(1.0); }
+
+	constexpr void clampLength(double max)
+	{
+		if (double len = length(); len > max) {
+			x = T(max * double(x) / len);
+			y = T(max * double(y) / len);
+		}
+	}
+
+	// friend constexpr auto operator<=>(Vec2T, Vec2T) = default;
+
+	T x = 0;
+	T y = 0;
+
+	static constexpr Vec2T Up, Down, Left, Right;
+};
+
+template <typename T>
+constexpr Vec2T<T> Vec2T<T>::Up{0, -1};
+template <typename T>
+constexpr Vec2T<T> Vec2T<T>::Down{0, 1};
+template <typename T>
+constexpr Vec2T<T> Vec2T<T>::Left{-1, 0};
+template <typename T>
+constexpr Vec2T<T> Vec2T<T>::Right{1, 0};
+
+template <typename T>
+constexpr T dot(Vec2T<T> a, Vec2T<T> b)
+{
+	return a.x * b.x + a.y * b.y;
+}
+
+template <typename T>
+constexpr Vec2T<T>& operator+=(Vec2T<T>& a, Vec2T<T> b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	return a;
+}
+
+template <typename T>
+constexpr Vec2T<T>& operator-=(Vec2T<T>& a, Vec2T<T> b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	return a;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T>& operator*=(Vec2T<T>& v, C c)
+{
+	v.x *= c;
+	v.y *= c;
+	return v;
+}
+
+template <typename T>
+constexpr Vec2T<T>& operator*=(Vec2T<T>& a, Vec2T<T> b)
+{
+	a.x *= b.x;
+	a.y *= b.y;
+	return a;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T>& operator/=(Vec2T<T>& v, C c)
+{
+	v.x /= c;
+	v.y /= c;
+	return v;
+}
+
+template <typename T>
+constexpr Vec2T<T>& operator/=(Vec2T<T>& a, Vec2T<T> b)
+{
+	a.x /= b.x;
+	a.y /= b.y;
+	return a;
+}
+
+template <typename T>
+constexpr Vec2T<T> operator-(Vec2T<T> v)
+{
+	return {-v.x, -v.y};
+}
+
+template <typename T>
+constexpr Vec2T<T> operator+(Vec2T<T> a, Vec2T<T> b)
+{
+	return a += b;
+}
+
+template <typename T>
+constexpr Vec2T<T> operator-(Vec2T<T> a, Vec2T<T> b)
+{
+	return a -= b;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T> operator*(C c, Vec2T<T> v)
+{
+	return v *= c;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T> operator*(Vec2T<T> v, C c)
+{
+	return v *= c;
+}
+
+template <typename T>
+constexpr Vec2T<T> operator*(Vec2T<T> a, Vec2T<T> b)
+{
+	return a *= b;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T> operator/(Vec2T<T> v, C c)
+{
+	return v /= c;
+}
+
+template <typename T, typename C>
+constexpr Vec2T<T> operator/(C c, Vec2T<T> v)
+{
+	return {c / v.x, c / v.y};
+}
+
+template <typename T>
+constexpr Vec2T<T> operator/(Vec2T<T> a, Vec2T<T> b)
+{
+	return a /= b;
+}
+
+using Vec2 = Vec2T<f32>;
+using Vec2d = Vec2T<f64>;
+using Vec2i = Vec2T<i32>;
+
+////////////////////////////////////////////////////////////
 // Span
 //
 // A Span refers to a contiguous sequence of objects.
@@ -234,9 +407,6 @@ constexpr T invLerp(T v, T lo, T hi)
 // This implementation is far more basic than std::span, but it should cover the
 // relevant use cases. Functions are implemented in a safe manner where
 // possible.
-//
-// Note the additional conversion functions asBytes and asSpan below, easing the
-// handling of binary data.
 
 template <typename T>
 struct Span {
@@ -252,8 +422,8 @@ struct Span {
 
 	// Construct from another span, assuming the underlying pointer is
 	// convertible. Commonly used for Span<T> -> Span<const T>.
-	template <typename U>
-	constexpr Span(Span<U> span) : data(span.data), count(span.count)
+	template <typename TT>
+	constexpr Span(Span<TT> span) : data(span.data), count(span.count)
 	{
 	}
 
@@ -284,14 +454,56 @@ struct Span {
 	constexpr T* begin() const { return data; }
 	constexpr T* end() const { return data + count; }
 
-	template <typename U>
-	constexpr Span<U> as() const
+	template <typename TT>
+	constexpr Span<TT> as() const
 	{
-		return Span<U>(reinterpret_cast<U*>(data), byteCount() / sizeof(U));
+		return Span<TT>(reinterpret_cast<TT*>(data), byteCount() / sizeof(TT));
 	}
 
 	T* data = nullptr;
 	usize count = 0;
+};
+
+////////////////////////////////////////////////////////////
+// Unmanaged Storage
+//
+// The UnmanagedStorage wrapper is used to disable dynamic construction and
+// destruction for global variables. The wrapped object is stored inline and
+// needs to be created and destroyed manually.
+
+template <typename T>
+struct UnmanagedStorage {
+	template <typename... Args>
+	constexpr T* emplace(Args&&... args)
+	{
+		reset();
+		new (instance) T(args...);
+		hasInstance = true;
+		return get();
+	}
+
+	constexpr void reset()
+	{
+		if (hasInstance) {
+			hasInstance = false;
+			get()->~T();
+		}
+	}
+
+	constexpr T* get()
+	{
+		MY_ASSERT(hasInstance, nullptr);
+		return reinterpret_cast<T*>(&instance);
+	}
+	constexpr const T* get() const { const_cast<UnmanagedStorage<T>*>(this)->get(); }
+
+	constexpr T* operator->() { return get(); }
+	constexpr const T* operator->() const { return get(); }
+
+	constexpr explicit operator bool() const { return hasInstance; }
+
+	bool hasInstance = false;
+	alignas(T) u8 instance[sizeof(T)] = {};
 };
 
 } // namespace MY
