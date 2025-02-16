@@ -1,11 +1,30 @@
+// MIT License
+//
+// Copyright (c) 2025 Alexander Hirsch
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <algorithm>
-#include <initializer_list>
 
 namespace MY {
 
@@ -19,7 +38,15 @@ namespace MY {
 
 #define MY_TEMPORARY(prefix) MY_XCONCAT(prefix, __COUNTER__)
 
-#if _MSC_VER
+#if defined _MSC_VER
+#define MY_FILENAME __FILE__
+#else
+#define MY_FILENAME __FILE_NAME__
+#endif
+
+#define MY_ARRAYSIZE(x) (sizeof(x) / sizeof(0 [x]))
+
+#if defined _MSC_VER
 #define MY_ATTR_PRINTF(x, y)
 #define MY_ATTR_PRINTF_PARAM(x) _Printf_format_string_ x
 #else
@@ -29,6 +56,11 @@ namespace MY {
 
 ////////////////////////////////////////////////////////////
 // Assertion
+//
+// These assertions are always enabled, the condition is always checked. An
+// error is logged on failure, followed by a call to onAssert (if set). onAssert
+// usually terminates the program; however, if control-flow is supposed to
+// continue, we return from the current function with the given return value.
 
 #define MY_ASSERT1(cond) \
 	do { \
@@ -60,6 +92,16 @@ extern OnAssert onAssert;
 
 ////////////////////////////////////////////////////////////
 // Logging
+//
+// This provides a very basic logging infrastructure where log messages are
+// emitted via a onLog callback function (if set). An internal buffer is used
+// for formatting the log message.
+//
+// The Trace severity is meant for sub-system specific logging that can be
+// enabled / disabled at compile-time via the preprocessor (e.g. MY_TRACE_INPUT,
+// MY_TRACE_AUDIO).
+//
+// Note that onLog's implementation as to cover thread-safety.
 
 #define MY_INFO(...) MY_LOG(::MY::Severity::Info, __VA_ARGS__)
 #define MY_WARN(...) MY_LOG(::MY::Severity::Warning, __VA_ARGS__)
@@ -73,7 +115,7 @@ extern thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 	do { \
 		if (::MY::onLog) { \
 			snprintf(::MY::g_logBuffer, MY_LOG_BUFFER_SIZE, __VA_ARGS__); \
-			::MY::onLog(severity, ::MY::g_logBuffer, __FILE__, __LINE__); \
+			::MY::onLog(severity, ::MY::g_logBuffer, MY_FILENAME, __LINE__); \
 		} \
 	} while (0)
 
@@ -95,6 +137,9 @@ extern OnLog onLog;
 
 ////////////////////////////////////////////////////////////
 // Defer
+//
+// The defer utility allows code to be executed automatically at the end of the
+// enclosing scope.
 
 #define MY_DEFER(code) const auto MY_TEMPORARY(deferer) = ::MY::Deferer([&]() { code; });
 
@@ -138,16 +183,61 @@ using f32 = float;
 using f64 = double;
 
 ////////////////////////////////////////////////////////////
-// Span
+// Math
 
-// Span refers to a contiguous sequence of objects.
+template <typename T>
+constexpr T min(T a, T b)
+{
+	return (b < a) ? b : a;
+}
+
+template <typename T>
+constexpr T max(T a, T b)
+{
+	return (a < b) ? b : a;
+}
+
+template <typename T>
+constexpr T clamp(T v, T lo, T hi)
+{
+	if (v < lo)
+		return lo;
+	else if (v > hi)
+		return hi;
+	else
+		return v;
+}
+
+template <typename T>
+constexpr T clamp01(T v)
+{
+	return clamp(v, T(0), T(1));
+}
+
+template <typename T>
+constexpr T lerp(T l, T lo, T hi)
+{
+	return lo + (hi - lo) * l;
+}
+
+template <typename T>
+constexpr T invLerp(T v, T lo, T hi)
+{
+	return (v - lo) / (hi - lo);
+}
+
+////////////////////////////////////////////////////////////
+// Span
 //
-// This implementation is far more basic than std::span, but it should cover
-// the relevant use cases. Functions are implemented in a safe manner where
+// A Span refers to a contiguous sequence of objects.
+//
+// This implementation is far more basic than std::span, but it should cover the
+// relevant use cases. Functions are implemented in a safe manner where
 // possible.
 //
-// Note the additional conversion functions asBytes and asSpan below, easing
-// the handling of binary data.
+// Note the additional conversion functions asBytes and asSpan below, easing the
+// handling of binary data.
+
 template <typename T>
 struct Span {
 	constexpr Span() = default;
@@ -183,8 +273,8 @@ struct Span {
 
 	constexpr Span<T> subspan(usize offset, usize subCount = -1) const
 	{
-		offset = std::min(offset, count);
-		subCount = std::min(subCount, count - offset);
+		offset = min(offset, count);
+		subCount = min(subCount, count - offset);
 		return Span(data + offset, subCount);
 	}
 
@@ -194,32 +284,14 @@ struct Span {
 	constexpr T* begin() const { return data; }
 	constexpr T* end() const { return data + count; }
 
+	template <typename U>
+	constexpr Span<U> as() const
+	{
+		return Span<U>(reinterpret_cast<U*>(data), byteCount() / sizeof(U));
+	}
+
 	T* data = nullptr;
 	usize count = 0;
 };
-
-template <typename T>
-constexpr Span<u8> asBytes(Span<T> span)
-{
-	return Span(reinterpret_cast<u8*>(span.data), span.byteCount());
-}
-
-template <typename T>
-constexpr Span<const u8> asBytes(Span<const T> span)
-{
-	return Span(reinterpret_cast<const u8*>(span.data), span.byteCount());
-}
-
-template <typename T>
-constexpr Span<T> asSpan(Span<u8> span)
-{
-	return Span(reinterpret_cast<T*>(span.data), span.count / sizeof(T));
-}
-
-template <typename T>
-constexpr Span<const T> asSpan(Span<const u8> span)
-{
-	return Span(reinterpret_cast<const T*>(span.data), span.count / sizeof(T));
-}
 
 } // namespace MY
