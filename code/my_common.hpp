@@ -99,7 +99,7 @@ overload(Ts...) -> overload<Ts...>;
 		if (!(cond)) [[unlikely]] { \
 			MY_ERROR("Assertion failed: %s", #cond); \
 			if (::MY::onAssert) { \
-				::MY::onAssert(); \
+				::MY::onAssert(#cond, MY_FILENAME, __LINE__); \
 			} \
 			return; \
 		} \
@@ -110,7 +110,7 @@ overload(Ts...) -> overload<Ts...>;
 		if (!(cond)) [[unlikely]] { \
 			MY_ERROR("Assertion failed: %s", #cond); \
 			if (::MY::onAssert) { \
-				::MY::onAssert(); \
+				::MY::onAssert(#cond, MY_FILENAME, __LINE__); \
 			} \
 			return (ret); \
 		} \
@@ -119,7 +119,7 @@ overload(Ts...) -> overload<Ts...>;
 #define MY_ASSERT(...) MY_EXPAND(MY_ASSERT_OVERLOAD(__VA_ARGS__, MY_ASSERT2, MY_ASSERT1)(__VA_ARGS__))
 #define MY_ASSERT_OVERLOAD(_1, _2, NAME, ...) NAME
 
-using OnAssert = void (*)();
+using OnAssert = void (*)(const char* condition, const char* file, long line) noexcept;
 extern OnAssert onAssert;
 
 ////////////////////////////////////////////////////////////
@@ -164,7 +164,7 @@ inline constexpr char toChar(Severity severity)
 	return '?';
 }
 
-using OnLog = void (*)(Severity, const char* message, const char* file, long line);
+using OnLog = void (*)(Severity, const char* message, const char* file, long line) noexcept;
 extern OnLog onLog;
 
 ////////////////////////////////////////////////////////////
@@ -177,9 +177,9 @@ extern OnLog onLog;
 
 template <typename T>
 struct Deferer {
-	explicit Deferer(T&& function) : function(function) {}
-	~Deferer() noexcept { function(); }
-	T function;
+	explicit Deferer(T&& function) : function_(function) {}
+	~Deferer() noexcept { function_(); }
+	T function_;
 };
 
 ////////////////////////////////////////////////////////////
@@ -270,27 +270,63 @@ struct Vec2T {
 		}
 	}
 
-	// friend constexpr auto operator<=>(Vec2T, Vec2T) = default;
-
 	T x = 0;
 	T y = 0;
 
-	static constexpr Vec2T Up, Down, Left, Right;
+	static const Vec2T Up, Down, Left, Right;
 };
 
 template <typename T>
-constexpr Vec2T<T> Vec2T<T>::Up{0, -1};
+const Vec2T<T> Vec2T<T>::Up{0, -1};
 template <typename T>
-constexpr Vec2T<T> Vec2T<T>::Down{0, 1};
+const Vec2T<T> Vec2T<T>::Down{0, 1};
 template <typename T>
-constexpr Vec2T<T> Vec2T<T>::Left{-1, 0};
+const Vec2T<T> Vec2T<T>::Left{-1, 0};
 template <typename T>
-constexpr Vec2T<T> Vec2T<T>::Right{1, 0};
+const Vec2T<T> Vec2T<T>::Right{1, 0};
 
 template <typename T>
 constexpr T dot(Vec2T<T> a, Vec2T<T> b)
 {
 	return a.x * b.x + a.y * b.y;
+}
+
+template <typename T>
+constexpr bool operator==(Vec2T<T> a, Vec2T<T> b)
+{
+	return a.x == b.x && a.y == b.y;
+}
+
+template <typename T>
+constexpr bool operator!=(Vec2T<T> a, Vec2T<T> b)
+{
+	return !(a == b);
+}
+
+template <typename T>
+constexpr bool operator<(Vec2T<T> a, Vec2T<T> b)
+{
+	if (a.x != b.x)
+		return a.x < b.x;
+	return a.z < b.z;
+}
+
+template <typename T>
+constexpr bool operator<=(Vec2T<T> a, Vec2T<T> b)
+{
+	return a < b || a == b;
+}
+
+template <typename T>
+constexpr bool operator>(Vec2T<T> a, Vec2T<T> b)
+{
+	return !(a <= b);
+}
+
+template <typename T>
+constexpr bool operator>=(Vec2T<T> a, Vec2T<T> b)
+{
+	return !(a < b);
 }
 
 template <typename T>
@@ -427,7 +463,7 @@ struct Span {
 	{
 	}
 
-	// The sub-script operator always does bounds checking. If this is not
+	// The subscript operator always does bounds checking. If this is not
 	// desired, use .data[index] instead.
 	constexpr T* operator[](usize index) const
 	{
@@ -477,33 +513,33 @@ struct UnmanagedStorage {
 	constexpr T* emplace(Args&&... args)
 	{
 		reset();
-		new (instance) T(args...);
-		hasInstance = true;
+		new (instance_) T(args...);
+		hasInstance_ = true;
 		return get();
 	}
 
 	constexpr void reset()
 	{
-		if (hasInstance) {
-			hasInstance = false;
+		if (hasInstance_) {
+			hasInstance_ = false;
 			get()->~T();
 		}
 	}
 
 	constexpr T* get()
 	{
-		MY_ASSERT(hasInstance, nullptr);
-		return reinterpret_cast<T*>(&instance);
+		MY_ASSERT(hasInstance_, nullptr);
+		return reinterpret_cast<T*>(&instance_);
 	}
 	constexpr const T* get() const { const_cast<UnmanagedStorage<T>*>(this)->get(); }
 
 	constexpr T* operator->() { return get(); }
 	constexpr const T* operator->() const { return get(); }
 
-	constexpr explicit operator bool() const { return hasInstance; }
+	constexpr explicit operator bool() const { return hasInstance_; }
 
-	bool hasInstance = false;
-	alignas(T) u8 instance[sizeof(T)] = {};
+	bool hasInstance_ = false;
+	alignas(T) u8 instance_[sizeof(T)] = {};
 };
 
 } // namespace MY

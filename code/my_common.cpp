@@ -29,15 +29,16 @@ namespace MY {
 ////////////////////////////////////////////////////////////
 // Assertions
 
-OnAssert onAssert = abort;
+constinit OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
 
 ////////////////////////////////////////////////////////////
 // Logging
 
-thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
+constinit thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 
-OnLog onLog = +[](Severity severity, const char* msg, const char* file, long line) {
-	static std::mutex g_logMutex;
+constinit static std::mutex g_logMutex;
+
+constinit OnLog onLog = +[](Severity severity, const char* msg, const char* file, long line) noexcept {
 	std::lock_guard guard(g_logMutex);
 	printf("%c [%s:%ld] %s\n", toChar(severity), file, line, msg);
 	if (severity >= Severity::Warning) {
