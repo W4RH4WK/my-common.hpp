@@ -75,4 +75,15 @@ TEST_CASE("UnmanagedStorage allows re-initialization", "[unmanaged_storage]")
 	REQUIRE(deinitCount == 2);
 }
 
+TEST_CASE("UnmanagedStorage get asserts", "[unmanaged_storage]")
+{
+	static int assertCount = 0;
+	onAssert = +[](const char*, const char*, long) noexcept { assertCount++; };
+
+	UnmanagedStorage<int> storage;
+
+	REQUIRE(storage.get() == nullptr);
+	REQUIRE(assertCount == 1);
+}
+
 } // namespace MY
