@@ -22,26 +22,41 @@
 
 #include "my_common.hpp"
 
+#include <stdarg.h>
+#include <stdio.h>
+
 #include <mutex>
 
 namespace MY {
 
 ////////////////////////////////////////////////////////////
+// String Interpolation
+
+usize sformat(Slice<char> slice, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int n = vsnprintf(slice.data, slice.count, fmt, args);
+	va_end(args);
+	return max(usize(0), usize(n));
+}
+
+////////////////////////////////////////////////////////////
 // Assertions
 
-constinit OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
+OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
 
 ////////////////////////////////////////////////////////////
 // Logging
 
-constinit thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
+thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 
-constinit static std::mutex g_logMutex;
+static std::mutex g_logMutex;
 
-constinit OnLog onLog = +[](Severity severity, const char* msg, const char* file, long line) noexcept {
+OnLog onLog = +[](LogSeverity severity, const char* msg, const char* file, long line) noexcept {
 	std::lock_guard guard(g_logMutex);
 	printf("%c [%s:%ld] %s\n", toChar(severity), file, line, msg);
-	if (severity >= Severity::Warning) {
+	if (severity >= LogSeverity::Warning) {
 		fflush(stdout);
 	}
 };

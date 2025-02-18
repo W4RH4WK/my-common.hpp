@@ -22,9 +22,8 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 namespace MY {
 
@@ -87,6 +86,15 @@ template <class... Ts>
 overload(Ts...) -> overload<Ts...>;
 
 ////////////////////////////////////////////////////////////
+// String Interpolation
+
+template <typename T>
+struct Slice;
+
+MY_ATTR_PRINTF(2, 3)
+usize sformat(Slice<char>, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
+
+////////////////////////////////////////////////////////////
 // Assertion
 //
 // These assertions are always enabled, the condition is always checked. An
@@ -135,9 +143,9 @@ extern OnAssert onAssert;
 //
 // Note that onLog's implementation as to cover thread-safety.
 
-#define MY_INFO(...) MY_LOG(::MY::Severity::Info, __VA_ARGS__)
-#define MY_WARN(...) MY_LOG(::MY::Severity::Warning, __VA_ARGS__)
-#define MY_ERROR(...) MY_LOG(::MY::Severity::Error, __VA_ARGS__)
+#define MY_INFO(...) MY_LOG(::MY::LogSeverity::Info, __VA_ARGS__)
+#define MY_WARN(...) MY_LOG(::MY::LogSeverity::Warning, __VA_ARGS__)
+#define MY_ERROR(...) MY_LOG(::MY::LogSeverity::Error, __VA_ARGS__)
 
 // To minimize dynamic allocation, a thread-local buffer is used for formatting.
 #define MY_LOG_BUFFER_SIZE 1024
@@ -146,25 +154,25 @@ extern thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 #define MY_LOG(severity, ...) \
 	do { \
 		if (::MY::onLog) { \
-			::snprintf(::MY::g_logBuffer, MY_LOG_BUFFER_SIZE, __VA_ARGS__); \
+			::MY::sformat(::MY::g_logBuffer, __VA_ARGS__); \
 			::MY::onLog(severity, ::MY::g_logBuffer, MY_FILENAME, __LINE__); \
 		} \
 	} while (0)
 
-enum class Severity { Trace, Info, Warning, Error };
+enum class LogSeverity { Trace, Info, Warning, Error };
 
-inline constexpr char toChar(Severity severity)
+inline constexpr char toChar(LogSeverity severity)
 {
 	switch (severity) {
-	case Severity::Trace: return 'T';
-	case Severity::Info: return 'I';
-	case Severity::Warning: return 'W';
-	case Severity::Error: return 'E';
+	case LogSeverity::Trace: return 'T';
+	case LogSeverity::Info: return 'I';
+	case LogSeverity::Warning: return 'W';
+	case LogSeverity::Error: return 'E';
 	}
 	return '?';
 }
 
-using OnLog = void (*)(Severity, const char* message, const char* file, long line) noexcept;
+using OnLog = void (*)(LogSeverity, const char* message, const char* file, long line) noexcept;
 extern OnLog onLog;
 
 ////////////////////////////////////////////////////////////
@@ -436,30 +444,30 @@ using Vec2d = Vec2T<f64>;
 using Vec2i = Vec2T<i32>;
 
 ////////////////////////////////////////////////////////////
-// Span
+// Slice
 //
-// A Span refers to a contiguous sequence of objects.
+// A Slice refers to a contiguous sequence of objects.
 //
 // This implementation is far more basic than std::span, but it should cover the
 // relevant use cases. Functions are implemented in a safe manner where
 // possible.
 
 template <typename T>
-struct Span {
-	constexpr Span() = default;
-	constexpr Span(T* data, usize count) : data(data), count(count) {}
-	constexpr Span(T* begin, T* end) : data(begin), count(end - begin) {}
+struct Slice {
+	constexpr Slice() = default;
+	constexpr Slice(T* data, usize count) : data(data), count(count) {}
+	constexpr Slice(T* begin, T* end) : data(begin), count(end - begin) {}
 
 	// Construct from a native array, deriving the statically known size.
 	template <usize count>
-	constexpr Span(T (&data)[count]) : data(data), count(count)
+	constexpr Slice(T (&data)[count]) : data(data), count(count)
 	{
 	}
 
 	// Construct from another span, assuming the underlying pointer is
-	// convertible. Commonly used for Span<T> -> Span<const T>.
+	// convertible. Commonly used for Slice<T> -> Slice<const T>.
 	template <typename TT>
-	constexpr Span(Span<TT> span) : data(span.data), count(span.count)
+	constexpr Slice(Slice<TT> span) : data(span.data), count(span.count)
 	{
 	}
 
@@ -477,23 +485,23 @@ struct Span {
 	constexpr T* front() const { return operator[](0); }
 	constexpr T* back() const { return operator[](count - 1); }
 
-	constexpr Span<T> subspan(usize offset, usize subCount = -1) const
+	constexpr Slice<T> slice(usize offset, usize sliceCount = -1) const
 	{
 		offset = min(offset, count);
-		subCount = min(subCount, count - offset);
-		return Span(data + offset, subCount);
+		sliceCount = min(sliceCount, count - offset);
+		return Slice(data + offset, sliceCount);
 	}
 
-	constexpr Span<T> first(usize subCount) const { return subspan(0, subCount); }
-	constexpr Span<T> last(usize subCount) const { return subspan(count - subCount); }
+	constexpr Slice<T> first(usize sliceCount) const { return slice(0, sliceCount); }
+	constexpr Slice<T> last(usize sliceCount) const { return slice(count - sliceCount); }
 
 	constexpr T* begin() const { return data; }
 	constexpr T* end() const { return data + count; }
 
 	template <typename TT>
-	constexpr Span<TT> as() const
+	constexpr Slice<TT> as() const
 	{
-		return Span<TT>(reinterpret_cast<TT*>(data), byteCount() / sizeof(TT));
+		return Slice<TT>(reinterpret_cast<TT*>(data), byteCount() / sizeof(TT));
 	}
 
 	T* data = nullptr;
@@ -510,19 +518,19 @@ struct Span {
 template <typename T>
 struct UnmanagedStorage {
 	template <typename... Args>
-	constexpr T* emplace(Args&&... args)
+	constexpr T* init(Args&&... args)
 	{
-		reset();
+		deinit();
 		new (instance_) T(args...);
 		hasInstance_ = true;
 		return get();
 	}
 
-	constexpr void reset()
+	constexpr void deinit()
 	{
 		if (hasInstance_) {
 			hasInstance_ = false;
-			get()->~T();
+			reinterpret_cast<T*>(&instance_)->~T();
 		}
 	}
 
