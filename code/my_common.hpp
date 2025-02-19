@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -119,7 +120,6 @@ inline constexpr u64 hashCombine(u64 seed, u64 v)
 	seed ^= seed >> 32u;
 	seed *= 0xE9846AF9B1A615Du;
 	seed ^= seed >> 28u;
-
 	return seed + v;
 }
 
@@ -582,7 +582,7 @@ inline constexpr u64 hash(Slice<T> slice)
 ////////////////////////////////////////////////////////////
 // String Utilities
 
-inline constexpr u32 sCmp(const char* a, const char* b)
+inline constexpr i32 sCmp(const char* a, const char* b)
 {
 	MY_ASSERT(a && b, 0);
 	while (*a && (*a == *b)) {

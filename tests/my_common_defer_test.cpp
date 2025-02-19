@@ -2,8 +2,6 @@
 
 #include "catch_amalgamated.hpp"
 
-namespace MY {
-
 TEST_CASE("Defer is executed at end of scope", "[defer]")
 {
 	int i = 0;
@@ -24,5 +22,3 @@ TEST_CASE("Defer is executed in reverse order", "[defer]")
 	}
 	REQUIRE(i == 1);
 }
-
-} // namespace MY

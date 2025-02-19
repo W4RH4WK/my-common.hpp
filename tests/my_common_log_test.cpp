@@ -1,9 +1,9 @@
 #include <my_common.hpp>
 
 #include "catch_amalgamated.hpp"
-using namespace Catch::Matchers;
 
-namespace MY {
+using namespace MY;
+using namespace Catch::Matchers;
 
 TEST_CASE("Log messages invoke onLog callback", "[log]")
 {
@@ -33,5 +33,3 @@ TEST_CASE("onLog callback disabled in tests by default", "[log]")
 {
 	REQUIRE(onLog == nullptr);
 }
-
-} // namespace MY

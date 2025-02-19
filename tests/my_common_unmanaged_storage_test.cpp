@@ -2,7 +2,7 @@
 
 #include "catch_amalgamated.hpp"
 
-namespace MY {
+using namespace MY;
 
 TEST_CASE("UnmanagedStorage does not construct automatically", "[unmanaged_storage]")
 {
@@ -85,5 +85,3 @@ TEST_CASE("UnmanagedStorage get asserts", "[unmanaged_storage]")
 	REQUIRE(storage.get() == nullptr);
 	REQUIRE(assertCount == 1);
 }
-
-} // namespace MY

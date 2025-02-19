@@ -1,9 +1,9 @@
 #include <my_common.hpp>
 
 #include "catch_amalgamated.hpp"
-using namespace Catch::Matchers;
 
-namespace MY {
+using namespace MY;
+using namespace Catch::Matchers;
 
 TEST_CASE("Assert returns from current function", "[assert]")
 {
@@ -50,5 +50,3 @@ TEST_CASE("onAssert callback disabled in tests by default", "[assert]")
 {
 	REQUIRE(onAssert == nullptr);
 }
-
-} // namespace MY
