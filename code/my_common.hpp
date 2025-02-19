@@ -65,9 +65,14 @@ using u32 = uint32_t;
 using i64 = int64_t;
 using u64 = uint64_t;
 using usize = size_t;
+// using ptrdiff = ptrdiff_t;
+// using intptr = intptr_t;
 
 using f32 = float;
 using f64 = double;
+
+template <typename T>
+struct Slice;
 
 ////////////////////////////////////////////////////////////
 // Type Utilities
@@ -86,21 +91,78 @@ template <class... Ts>
 overload(Ts...) -> overload<Ts...>;
 
 ////////////////////////////////////////////////////////////
-// String Interpolation
+// Hash
+
+// clang-format off
+inline constexpr u64 hash(i8  v) { return u64(v); }
+inline constexpr u64 hash(u8  v) { return u64(v); }
+inline constexpr u64 hash(i16 v) { return u64(v); }
+inline constexpr u64 hash(u16 v) { return u64(v); }
+inline constexpr u64 hash(i32 v) { return u64(v); }
+inline constexpr u64 hash(u32 v) { return u64(v); }
+inline constexpr u64 hash(i64 v) { return u64(v); }
+inline constexpr u64 hash(u64 v) { return v; }
+inline constexpr u64 hash(f32 v) { return hash(*reinterpret_cast<u32*>(&v)); }
+inline constexpr u64 hash(f64 v) { return hash(*reinterpret_cast<u64*>(&v)); }
+// clang-format on
 
 template <typename T>
-struct Slice;
+constexpr u64 hash(T* p)
+{
+	return u64(p);
+}
+
+inline constexpr u64 hashCombine(u64 seed, u64 v)
+{
+	seed ^= seed >> 32u;
+	seed *= 0xE9846AF9B1A615Du;
+	seed ^= seed >> 32u;
+	seed *= 0xE9846AF9B1A615Du;
+	seed ^= seed >> 28u;
+
+	return seed + v;
+}
+
+inline constexpr u64 hashRange(const u8* data, usize size)
+{
+	u64 seed = 0;
+	while (size >= sizeof(u64)) {
+		seed = hashCombine(seed, *reinterpret_cast<const u64*>(data));
+		data += sizeof(u64);
+		size -= sizeof(u64);
+	}
+	while (size >= sizeof(u32)) {
+		seed = hashCombine(seed, *reinterpret_cast<const u32*>(data));
+		data += sizeof(u32);
+		size -= sizeof(u32);
+	}
+	while (size > 0) {
+		seed = hashCombine(seed, *data++);
+		size--;
+	}
+	return seed;
+}
+
+////////////////////////////////////////////////////////////
+// String Interpolation
+//
+// Some form of string interpolation is essential for the creation of log and
+// error messages. For simplicity, we use a thin wrapper around snprintf, which
+// writes the result into dst.
+//
+// The resulting string is null-terminated and sFormat returns the number of
+// characters written (including the null-terminator).
 
 MY_ATTR_PRINTF(2, 3)
-usize sformat(Slice<char>, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
+usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
 
 ////////////////////////////////////////////////////////////
 // Assertion
 //
 // These assertions are always enabled, the condition is always checked. An
 // error is logged on failure, followed by a call to onAssert (if set). onAssert
-// usually terminates the program; however, if control-flow is supposed to
-// continue, we return from the current function with the given return value.
+// usually terminates the program; however, if execution continues, we return
+// from the current function with the given return value.
 
 #define MY_ASSERT1(cond) \
 	do { \
@@ -134,8 +196,8 @@ extern OnAssert onAssert;
 // Logging
 //
 // This provides a very basic logging infrastructure where log messages are
-// emitted via a onLog callback function (if set). An internal buffer is used
-// for formatting the log message.
+// emitted via an onLog callback function (if set). An internal buffer is used
+// for formatting log messages.
 //
 // The Trace severity is meant for sub-system specific logging that can be
 // enabled / disabled at compile-time via the preprocessor (e.g. MY_TRACE_INPUT,
@@ -154,7 +216,7 @@ extern thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 #define MY_LOG(severity, ...) \
 	do { \
 		if (::MY::onLog) { \
-			::MY::sformat(::MY::g_logBuffer, __VA_ARGS__); \
+			::MY::sFormat(::MY::g_logBuffer, __VA_ARGS__); \
 			::MY::onLog(severity, ::MY::g_logBuffer, MY_FILENAME, __LINE__); \
 		} \
 	} while (0)
@@ -479,6 +541,8 @@ struct Slice {
 		return data + index;
 	}
 
+	constexpr explicit operator bool() const { return !empty(); }
+
 	constexpr bool empty() const { return count == 0; }
 	constexpr usize byteCount() const { return sizeof(T) * count; }
 
@@ -507,6 +571,36 @@ struct Slice {
 	T* data = nullptr;
 	usize count = 0;
 };
+
+template <typename T>
+inline constexpr u64 hash(Slice<T> slice)
+{
+	auto bytes = slice.as<u8>();
+	return hashRange(bytes.data, bytes.count);
+}
+
+////////////////////////////////////////////////////////////
+// String Utilities
+
+inline constexpr u32 sCmp(const char* a, const char* b)
+{
+	MY_ASSERT(a && b, 0);
+	while (*a && (*a == *b)) {
+		a++;
+		b++;
+	}
+	return *reinterpret_cast<const u8*>(a) - *reinterpret_cast<const u8*>(b);
+}
+
+inline constexpr bool sEq(const char* a, const char* b)
+{
+	return sCmp(a, b) == 0;
+}
+
+inline constexpr bool sLess(const char* a, const char* b)
+{
+	return sCmp(a, b) < 0;
+}
 
 ////////////////////////////////////////////////////////////
 // Unmanaged Storage

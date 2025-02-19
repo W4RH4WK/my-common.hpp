@@ -32,17 +32,19 @@ namespace MY {
 ////////////////////////////////////////////////////////////
 // String Interpolation
 
-usize sformat(Slice<char> slice, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
+usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	int n = vsnprintf(slice.data, slice.count, fmt, args);
+	int n = vsnprintf(dst.data, dst.count, fmt, args);
 	va_end(args);
-	return max(usize(0), usize(n));
+	if (n < 0)
+		return 0;
+	return usize(n) + 1 /* terminator */;
 }
 
 ////////////////////////////////////////////////////////////
-// Assertions
+// Assertion
 
 OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
 
