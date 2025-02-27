@@ -8,13 +8,13 @@ using namespace Catch::Matchers;
 TEST_CASE("Assert returns from current function", "[assert]")
 {
 	[]() {
-		MY_ASSERT(21 == 42);
+		MY_ASSERT(false);
 		REQUIRE(false);
 	}();
 
 	// with return value
 	int x = []() -> int {
-		MY_ASSERT(21 == 42, -1);
+		MY_ASSERT(false, -1);
 		REQUIRE(false);
 		return 0;
 	}();
@@ -26,9 +26,9 @@ TEST_CASE("Assert invoke onAssert callback", "[assert]")
 	static const char* lastCondition;
 	onAssert = +[](const char* condition, const char*, long) noexcept { lastCondition = condition; };
 
-	[]() { MY_ASSERT(21 == 42); }();
+	[]() { MY_ASSERT(false); }();
 
-	REQUIRE_THAT(lastCondition, Equals("21 == 42"));
+	REQUIRE_THAT(lastCondition, Equals("false"));
 }
 
 TEST_CASE("Assert emits a log message", "[assert]")
@@ -40,9 +40,9 @@ TEST_CASE("Assert emits a log message", "[assert]")
 		lastSeverity = severity;
 	};
 
-	[]() { MY_ASSERT(21 == 42); }();
+	[]() { MY_ASSERT(false); }();
 
-	REQUIRE_THAT(lastMsg, Equals("Assertion failed: 21 == 42"));
+	REQUIRE_THAT(lastMsg, Equals("Assertion failed: false"));
 	REQUIRE(lastSeverity == LogSeverity::Error);
 }
 

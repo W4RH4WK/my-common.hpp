@@ -26,6 +26,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
+#include <type_traits>
+
 namespace MY {
 
 ////////////////////////////////////////////////////////////
@@ -66,8 +69,6 @@ using u32 = uint32_t;
 using i64 = int64_t;
 using u64 = uint64_t;
 using usize = size_t;
-// using ptrdiff = ptrdiff_t;
-// using intptr = intptr_t;
 
 using f32 = float;
 using f64 = double;
@@ -320,7 +321,7 @@ struct Vec2T {
 	constexpr Vec2T(T x, T y) : x(x), y(y) {}
 
 	template <typename TT>
-	explicit constexpr operator Vec2T<TT>() const
+	constexpr explicit operator Vec2T<TT>() const
 	{
 		return {TT(x), TT(y)};
 	}
@@ -339,6 +340,8 @@ struct Vec2T {
 			y = T(max * double(y) / len);
 		}
 	}
+
+	static friend constexpr auto operator<=>(Vec2T, Vec2T) = default;
 
 	T x = 0;
 	T y = 0;
@@ -359,44 +362,6 @@ template <typename T>
 constexpr T dot(Vec2T<T> a, Vec2T<T> b)
 {
 	return a.x * b.x + a.y * b.y;
-}
-
-template <typename T>
-constexpr bool operator==(Vec2T<T> a, Vec2T<T> b)
-{
-	return a.x == b.x && a.y == b.y;
-}
-
-template <typename T>
-constexpr bool operator!=(Vec2T<T> a, Vec2T<T> b)
-{
-	return !(a == b);
-}
-
-template <typename T>
-constexpr bool operator<(Vec2T<T> a, Vec2T<T> b)
-{
-	if (a.x != b.x)
-		return a.x < b.x;
-	return a.z < b.z;
-}
-
-template <typename T>
-constexpr bool operator<=(Vec2T<T> a, Vec2T<T> b)
-{
-	return a < b || a == b;
-}
-
-template <typename T>
-constexpr bool operator>(Vec2T<T> a, Vec2T<T> b)
-{
-	return !(a <= b);
-}
-
-template <typename T>
-constexpr bool operator>=(Vec2T<T> a, Vec2T<T> b)
-{
-	return !(a < b);
 }
 
 template <typename T>
@@ -533,21 +498,13 @@ struct Slice {
 	{
 	}
 
-	// The subscript operator always does bounds checking. If this is not
-	// desired, use .data[index] instead.
-	constexpr T* operator[](usize index) const
-	{
-		MY_ASSERT(index < count, nullptr);
-		return data + index;
-	}
-
 	constexpr explicit operator bool() const { return !empty(); }
 
 	constexpr bool empty() const { return count == 0; }
 	constexpr usize byteCount() const { return sizeof(T) * count; }
 
-	constexpr T* front() const { return operator[](0); }
-	constexpr T* back() const { return operator[](count - 1); }
+	constexpr T* begin() const { return data; }
+	constexpr T* end() const { return data + count; }
 
 	constexpr Slice<T> slice(usize offset, usize sliceCount = -1) const
 	{
@@ -559,8 +516,16 @@ struct Slice {
 	constexpr Slice<T> first(usize sliceCount) const { return slice(0, sliceCount); }
 	constexpr Slice<T> last(usize sliceCount) const { return slice(count - sliceCount); }
 
-	constexpr T* begin() const { return data; }
-	constexpr T* end() const { return data + count; }
+	// The subscript operator always does bounds checking. If this is not
+	// desired, use .data[index] instead.
+	constexpr T* operator[](usize index) const
+	{
+		MY_ASSERT(index < count, nullptr);
+		return data + index;
+	}
+
+	constexpr T* front() const { return operator[](0); }
+	constexpr T* back() const { return operator[](count - 1); }
 
 	template <typename TT>
 	constexpr Slice<TT> as() const
@@ -578,6 +543,137 @@ inline constexpr u64 hash(Slice<T> slice)
 	auto bytes = slice.as<u8>();
 	return hashRange(bytes.data, bytes.count);
 }
+
+////////////////////////////////////////////////////////////
+// Fixed Vector
+
+template <typename T, usize Capacity>
+struct FixedArray {
+	constexpr FixedArray() = default;
+	constexpr ~FixedArray() noexcept { clear(); }
+
+	constexpr FixedArray(const FixedArray& other)
+	    requires(std::is_copy_constructible_v<T>)
+	{
+		std::copy(other.begin(), other.end(), begin());
+		count_ = other.count_;
+	}
+
+	constexpr FixedArray& operator=(const FixedArray& other)
+	    requires(std::is_copy_constructible_v<T>)
+	{
+		if (&other != this) {
+			clear();
+			std::copy(other.begin(), other.end(), begin());
+			count_ = other.count_;
+		}
+		return *this;
+	}
+
+	constexpr FixedArray(FixedArray&& other) noexcept
+	    requires(std::is_nothrow_move_constructible_v<T>)
+	{
+		std::move(other.begin(), other.end(), begin());
+		count_ = other.count_;
+	}
+
+	constexpr FixedArray& operator=(FixedArray&& other) noexcept
+	    requires(std::is_nothrow_move_constructible_v<T>)
+	{
+		if (&other != this) {
+			clear();
+			std::move(other.begin(), other.end(), begin());
+			count_ = other.count_;
+		}
+		return *this;
+	}
+
+	constexpr usize count() const { return count_; }
+	constexpr usize byteCount() const { return count_ * sizeof(T); }
+	constexpr usize capacity() const { return Capacity; }
+
+	constexpr bool empty() const { return count_ == 0; }
+	constexpr bool full() const { return count_ == Capacity; }
+
+	constexpr T* data() { return reinterpret_cast<T*>(data_); }
+	constexpr const T* data() const { return reinterpret_cast<const T*>(data_); }
+
+	constexpr T* begin() { return data(); }
+	constexpr const T* begin() const { return data(); }
+	constexpr T* end() { return data() + count_; }
+	constexpr const T* end() const { return data() + count_; }
+
+	constexpr T* operator[](usize index)
+	{
+		MY_ASSERT(index < count_, nullptr);
+		return data() + index;
+	}
+	constexpr const T* operator[](usize index) const
+	{
+		MY_ASSERT(index < count_, nullptr);
+		return data() + index;
+	}
+
+	constexpr T* front() { return operator[](0); }
+	constexpr const T* front() const { return operator[](0); }
+	constexpr T* back() { return operator[](count_ - 1); }
+	constexpr const T* back() const { return operator[](count_ - 1); }
+
+	constexpr void insert(T* pos, const T& v) { emplace(pos, v); }
+
+	template <typename... Args>
+	constexpr void emplace(T* pos, Args&&... args)
+	{
+		MY_ASSERT(!full());
+		MY_ASSERT(begin() <= pos && pos <= end());
+
+		if (pos != end()) {
+			if constexpr (std::is_nothrow_move_constructible_v<T>) {
+				std::uninitialized_move_n(back(), 1, end());
+				std::move(pos, back(), pos + 1);
+			}
+			else {
+				std::uninitialized_copy_n(back(), 1, end());
+				std::copy(pos, back(), pos + 1);
+			}
+			std::destroy_at(pos);
+		}
+		std::construct_at(pos, std::forward<Args>(args)...);
+		count_++;
+	}
+
+	constexpr void append(const T& v) { insert(end(), v); }
+	constexpr void prepend(const T& v) { insert(begin(), v); }
+
+	constexpr void remove(T* pos) { removeRange(pos, pos + 1); }
+
+	constexpr void removeRange(T* first, T* last)
+	{
+		MY_ASSERT(first <= last);
+		MY_ASSERT(begin() <= first && first <= end());
+		MY_ASSERT(begin() <= last && last <= end());
+
+		T* rem = nullptr;
+		if constexpr (std::is_nothrow_move_constructible_v<T>)
+			rem = std::move_backward(last, end(), first);
+		else
+			rem = std::copy_backward(last, end(), first);
+		std::destroy(rem, end());
+		count_ -= last - first;
+	}
+
+	constexpr void clear()
+	{
+		std::destroy(begin(), end());
+		count_ = 0;
+	}
+
+	constexpr operator Slice<T>() { return Slice(begin(), end()); }
+	constexpr operator Slice<const T>() const { return Slice(begin(), end()); }
+
+	usize count_ = 0;
+	u8 data_[Capacity * sizeof(T)] = {};
+};
 
 ////////////////////////////////////////////////////////////
 // String Utilities
@@ -615,7 +711,7 @@ struct UnmanagedStorage {
 	constexpr T* init(Args&&... args)
 	{
 		deinit();
-		new (instance_) T(args...);
+		std::construct_at(reinterpret_cast<T*>(instance_), std::forward<Args>(args)...);
 		hasInstance_ = true;
 		return get();
 	}
@@ -624,7 +720,7 @@ struct UnmanagedStorage {
 	{
 		if (hasInstance_) {
 			hasInstance_ = false;
-			reinterpret_cast<T*>(&instance_)->~T();
+			std::destroy_at(reinterpret_cast<T*>(instance_));
 		}
 	}
 
@@ -641,7 +737,7 @@ struct UnmanagedStorage {
 	constexpr explicit operator bool() const { return hasInstance_; }
 
 	bool hasInstance_ = false;
-	alignas(T) u8 instance_[sizeof(T)] = {};
+	u8 instance_[sizeof(T)] = {};
 };
 
 } // namespace MY
