@@ -555,7 +555,7 @@ struct FixedArray {
 	constexpr FixedArray(const FixedArray& other)
 	    requires(std::is_copy_constructible_v<T>)
 	{
-		std::copy(other.begin(), other.end(), begin());
+		std::uninitialized_copy(other.begin(), other.end(), begin());
 		count_ = other.count_;
 	}
 
@@ -564,7 +564,7 @@ struct FixedArray {
 	{
 		if (&other != this) {
 			clear();
-			std::copy(other.begin(), other.end(), begin());
+			std::uninitialized_copy(other.begin(), other.end(), begin());
 			count_ = other.count_;
 		}
 		return *this;
@@ -573,8 +573,9 @@ struct FixedArray {
 	constexpr FixedArray(FixedArray&& other) noexcept
 	    requires(std::is_nothrow_move_constructible_v<T>)
 	{
-		std::move(other.begin(), other.end(), begin());
+		std::uninitialized_move(other.begin(), other.end(), begin());
 		count_ = other.count_;
+		other.clear();
 	}
 
 	constexpr FixedArray& operator=(FixedArray&& other) noexcept
@@ -582,8 +583,9 @@ struct FixedArray {
 	{
 		if (&other != this) {
 			clear();
-			std::move(other.begin(), other.end(), begin());
+			std::uninitialized_move(other.begin(), other.end(), begin());
 			count_ = other.count_;
+			other.clear();
 		}
 		return *this;
 	}
