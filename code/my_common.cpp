@@ -48,14 +48,14 @@ usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
 ////////////////////////////////////////////////////////////
 // Assertion
 
-OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
+constinit OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
 
 ////////////////////////////////////////////////////////////
 // Logging
 
 thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 
-static std::mutex g_logMutex;
+static constinit std::mutex g_logMutex;
 
 OnLog onLog = +[](LogSeverity severity, const char* msg, const char* file, long line) noexcept {
 	std::lock_guard guard(g_logMutex);
@@ -63,6 +63,14 @@ OnLog onLog = +[](LogSeverity severity, const char* msg, const char* file, long 
 	if (severity >= LogSeverity::Warning) {
 		fflush(stdout);
 	}
+};
+
+////////////////////////////////////////////////////////////
+// Allocator
+
+constinit Allocator g_defaultAllocator = {
+    .alloc_ = +[](void*, usize size) noexcept { return malloc(size); },
+    .dealloc_ = +[](void*, void* ptr) noexcept { return free(ptr); },
 };
 
 } // namespace MY

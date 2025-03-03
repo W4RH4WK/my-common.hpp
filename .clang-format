@@ -16,7 +16,7 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
 
 # Improve alignment of multi-line expressions.
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: DontAlign
 AlignOperands: AlignAfterOperator
 BreakBeforeBinaryOperators: NonAssignment
 PenaltyBreakAssignment: 25
