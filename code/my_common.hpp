@@ -577,10 +577,10 @@ T* relocateUninitBackward(T* first, T* last, T* dstLast)
 // Allocator
 
 struct Allocator {
-	void* alloc(usize size) const noexcept { return alloc_(userdata_, size); }
+	void* alloc(usize size, usize alignment = 1) const noexcept { return alloc_(userdata_, size, alignment); }
 	void dealloc(void* ptr) const noexcept { dealloc_(userdata_, ptr); }
 
-	void* (*alloc_)(void* userdata, usize size) noexcept = nullptr;
+	void* (*alloc_)(void* userdata, usize size, usize alignment) noexcept = nullptr;
 	void (*dealloc_)(void* userdata, void* ptr) noexcept = nullptr;
 	void* userdata_ = nullptr;
 };
