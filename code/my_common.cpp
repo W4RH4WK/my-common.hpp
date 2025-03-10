@@ -68,12 +68,11 @@ OnLog onLog = +[](LogSeverity severity, const char* msg, const char* file, long 
 ////////////////////////////////////////////////////////////
 // Allocator
 
-constinit Allocator g_defaultAllocator = {
-    .alloc_ = +[](void*, usize size, usize alignment) noexcept -> void* {
+constinit Allocator g_defaultAllocator(
+    +[](void*, usize size, usize alignment) noexcept -> void* {
 	    MY_ASSERT(alignment == 1, nullptr);
 	    return malloc(size);
     },
-    .dealloc_ = +[](void*, void* ptr) noexcept { return free(ptr); },
-};
+    +[](void*, void* ptr) noexcept { return free(ptr); }, nullptr);
 
 } // namespace MY
