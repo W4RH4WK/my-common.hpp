@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bit>
 #include <initializer_list>
 #include <memory>
 #include <type_traits>
@@ -105,8 +106,8 @@ inline constexpr u64 hash(i32 v) { return u64(v); }
 inline constexpr u64 hash(u32 v) { return u64(v); }
 inline constexpr u64 hash(i64 v) { return u64(v); }
 inline constexpr u64 hash(u64 v) { return v; }
-inline constexpr u64 hash(f32 v) { return hash(*reinterpret_cast<u32*>(&v)); }
-inline constexpr u64 hash(f64 v) { return hash(*reinterpret_cast<u64*>(&v)); }
+inline constexpr u64 hash(f32 v) { return hash(std::bit_cast<u32>(v)); }
+inline constexpr u64 hash(f64 v) { return hash(std::bit_cast<u64>(v)); }
 // clang-format on
 
 template <typename T>
