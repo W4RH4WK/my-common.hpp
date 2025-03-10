@@ -590,27 +590,27 @@ extern Allocator g_defaultAllocator;
 ////////////////////////////////////////////////////////////
 // Fixed Vector
 //
-// Note on constexpr: it's impossible to use FixedArray in a constexpr context
+// Note on constexpr: it's impossible to use FixedVector in a constexpr context
 // as reinterpret_cast is not allowed in a constexpr context. reinterpret_cast
 // is essential for the implementation.
 
 template <typename T, usize Capacity>
-struct FixedArray {
-	FixedArray() noexcept = default;
-	FixedArray(Slice<T> slice) { assignSlice(slice); }
-	FixedArray(Slice<const T> slice) { assignSlice(slice); }
-	FixedArray(std::initializer_list<T> init) { assignRange(init.begin(), init.end()); }
+struct FixedVector {
+	FixedVector() noexcept = default;
+	FixedVector(Slice<T> slice) { assignSlice(slice); }
+	FixedVector(Slice<const T> slice) { assignSlice(slice); }
+	FixedVector(std::initializer_list<T> init) { assignRange(init.begin(), init.end()); }
 
-	~FixedArray() noexcept { clear(); }
+	~FixedVector() noexcept { clear(); }
 
-	FixedArray(const FixedArray& other)
+	FixedVector(const FixedVector& other)
 	    requires(std::is_copy_constructible_v<T>)
 	{
 		std::uninitialized_copy(other.begin(), other.end(), begin());
 		count_ = other.count_;
 	}
 
-	FixedArray& operator=(const FixedArray& other)
+	FixedVector& operator=(const FixedVector& other)
 	    requires(std::is_copy_constructible_v<T>)
 	{
 		if (&other != this) {
@@ -621,7 +621,7 @@ struct FixedArray {
 		return *this;
 	}
 
-	FixedArray(FixedArray&& other) noexcept
+	FixedVector(FixedVector&& other) noexcept
 	    requires(std::is_nothrow_move_constructible_v<T>)
 	{
 		std::uninitialized_move(other.begin(), other.end(), begin());
@@ -629,7 +629,7 @@ struct FixedArray {
 		other.clear();
 	}
 
-	FixedArray& operator=(FixedArray&& other) noexcept
+	FixedVector& operator=(FixedVector&& other) noexcept
 	    requires(std::is_nothrow_move_constructible_v<T>)
 	{
 		if (&other != this) {
