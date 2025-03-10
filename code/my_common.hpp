@@ -342,7 +342,7 @@ struct Vec2T {
 		}
 	}
 
-	static friend constexpr auto operator<=>(Vec2T, Vec2T) = default;
+	friend constexpr auto operator<=>(Vec2T, Vec2T) = default;
 
 	T x = 0;
 	T y = 0;
@@ -484,7 +484,7 @@ template <typename T>
 struct Slice {
 	constexpr Slice() = default;
 	constexpr Slice(T* data, usize count) : data(data), count(count) {}
-	constexpr Slice(T* begin, T* end) : data(begin), count(end - begin) {}
+	constexpr Slice(T* begin, T* end) : data(begin), count(usize(end - begin)) { MY_ASSERT(begin <= end); }
 
 	// Construct from a native array, deriving the statically known size.
 	template <usize count>
@@ -507,7 +507,7 @@ struct Slice {
 	constexpr T* begin() const { return data; }
 	constexpr T* end() const { return data + count; }
 
-	constexpr Slice<T> slice(usize offset, usize sliceCount = -1) const
+	constexpr Slice<T> slice(usize offset, usize sliceCount = usize(-1)) const
 	{
 		offset = min(offset, count);
 		sliceCount = min(sliceCount, count - offset);
@@ -541,7 +541,7 @@ struct Slice {
 template <typename T>
 inline constexpr u64 hash(Slice<T> slice)
 {
-	auto bytes = slice.as<u8>();
+	auto bytes = slice.template as<u8>();
 	return hashRange(bytes.data, bytes.count);
 }
 

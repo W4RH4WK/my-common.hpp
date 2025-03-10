@@ -40,7 +40,7 @@ usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
 	va_end(args);
 	if (n < 0)
 		return 0;
-	if (n > dst.count)
+	if (usize(n) > dst.count)
 		return dst.count;
 	return usize(n) + 1 /* terminator */;
 }
