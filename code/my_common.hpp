@@ -76,7 +76,7 @@ using f32 = float;
 using f64 = double;
 
 template <typename T>
-struct Slice;
+struct Span;
 
 ////////////////////////////////////////////////////////////
 // Type Utilities
@@ -157,7 +157,7 @@ inline constexpr u64 hashRange(const u8* data, usize size)
 // characters written (including the null-terminator).
 
 MY_ATTR_PRINTF(2, 3)
-usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
+usize sFormat(Span<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
 
 ////////////////////////////////////////////////////////////
 // Assertion
@@ -473,77 +473,77 @@ using Vec2d = Vec2T<f64>;
 using Vec2i = Vec2T<i32>;
 
 ////////////////////////////////////////////////////////////
-// Slice
+// Span
 //
-// A Slice refers to a contiguous sequence of objects.
+// A Span refers to a contiguous sequence of objects.
 //
 // This implementation is far more basic than std::span, but it should cover the
 // relevant use cases. Functions are implemented in a safe manner where
 // possible.
 
 template <typename T>
-struct Slice {
-	constexpr Slice() = default;
-	constexpr Slice(T* data, usize count) : data(data), count(count) {}
-	constexpr Slice(T* begin, T* end) : data(begin), count(usize(end - begin)) { MY_ASSERT(begin <= end); }
+struct Span {
+	constexpr Span() = default;
+	constexpr Span(T* data, usize size) : data(data), size(size) {}
+	constexpr Span(T* begin, T* end) : data(begin), size(usize(end - begin)) { MY_ASSERT(begin <= end); }
 
 	// Construct from a native array, deriving the statically known size.
-	template <usize count>
-	constexpr Slice(T (&data)[count]) : data(data), count(count)
+	template <usize size>
+	constexpr Span(T (&data)[size]) : data(data), size(size)
 	{
 	}
 
 	// Construct from another span, assuming the underlying pointer is
-	// convertible. Commonly used for Slice<T> -> Slice<const T>.
+	// convertible. Commonly used for Span<T> -> Span<const T>.
 	template <typename TT>
-	constexpr Slice(Slice<TT> span) : data(span.data), count(span.count)
+	constexpr Span(Span<TT> span) : data(span.data), size(span.size)
 	{
 	}
 
 	constexpr explicit operator bool() const { return !empty(); }
 
-	constexpr bool empty() const { return count == 0; }
-	constexpr usize byteCount() const { return sizeof(T) * count; }
+	constexpr bool empty() const { return size == 0; }
+	constexpr usize sizebytes() const { return sizeof(T) * size; }
 
 	constexpr T* begin() const { return data; }
-	constexpr T* end() const { return data + count; }
+	constexpr T* end() const { return data + size; }
 
-	constexpr Slice<T> slice(usize offset, usize sliceCount = usize(-1)) const
+	constexpr Span<T> subspan(usize offset, usize subsize = usize(-1)) const
 	{
-		offset = min(offset, count);
-		sliceCount = min(sliceCount, count - offset);
-		return Slice(data + offset, sliceCount);
+		offset = min(offset, size);
+		subsize = min(subsize, size - offset);
+		return Span(data + offset, subsize);
 	}
 
-	constexpr Slice<T> first(usize sliceCount) const { return slice(0, sliceCount); }
-	constexpr Slice<T> last(usize sliceCount) const { return slice(count - sliceCount); }
+	constexpr Span<T> first(usize subsize) const { return subspan(0, subsize); }
+	constexpr Span<T> last(usize subsize) const { return subspan(size - subsize); }
 
 	// The subscript operator always does bounds checking. If this is not
 	// desired, use .data[index] instead.
 	constexpr T* operator[](usize index) const
 	{
-		MY_ASSERT(index < count, nullptr);
+		MY_ASSERT(index < size, nullptr);
 		return data + index;
 	}
 
 	constexpr T* front() const { return operator[](0); }
-	constexpr T* back() const { return operator[](count - 1); }
+	constexpr T* back() const { return operator[](size - 1); }
 
 	template <typename TT>
-	constexpr Slice<TT> as() const
+	constexpr Span<TT> as() const
 	{
-		return Slice<TT>(reinterpret_cast<TT*>(data), byteCount() / sizeof(TT));
+		return Span<TT>(reinterpret_cast<TT*>(data), sizebytes() / sizeof(TT));
 	}
 
 	T* data = nullptr;
-	usize count = 0;
+	usize size = 0;
 };
 
 template <typename T>
-inline constexpr u64 hash(Slice<T> slice)
+inline constexpr u64 hash(Span<T> span)
 {
-	auto bytes = slice.template as<u8>();
-	return hashRange(bytes.data, bytes.count);
+	auto bytes = span.template as<u8>();
+	return hashRange(bytes.data, bytes.size);
 }
 
 ////////////////////////////////////////////////////////////
@@ -597,8 +597,8 @@ extern Allocator g_defaultAllocator;
 template <typename T, usize Capacity>
 struct FixedVector {
 	FixedVector() noexcept = default;
-	FixedVector(Slice<T> slice) { assignSlice(slice); }
-	FixedVector(Slice<const T> slice) { assignSlice(slice); }
+	FixedVector(Span<T> span) { assignSpan(span); }
+	FixedVector(Span<const T> span) { assignSpan(span); }
 	FixedVector(std::initializer_list<T> init) { assignRange(init.begin(), init.end()); }
 
 	~FixedVector() noexcept { clear(); }
@@ -695,8 +695,8 @@ struct FixedVector {
 		count_ += insertCount;
 	}
 
-	void insertSlice(T* pos, Slice<T> slice) { insertRange(pos, slice.begin(), slice.end()); }
-	void insertSlice(T* pos, Slice<const T> slice) { insertRange(pos, slice.begin(), slice.end()); }
+	void insertSpan(T* pos, Span<T> span) { insertRange(pos, span.begin(), span.end()); }
+	void insertSpan(T* pos, Span<const T> span) { insertRange(pos, span.begin(), span.end()); }
 
 	void append(const T& v) { insert(end(), v); }
 
@@ -712,8 +712,8 @@ struct FixedVector {
 		insertRange(end(), first, last);
 	}
 
-	void appendSlice(Slice<T> slice) { insertRange(end(), slice.begin(), slice.end()); }
-	void appendSlice(Slice<const T> slice) { insertRange(end(), slice.begin(), slice.end()); }
+	void appendSpan(Span<T> span) { insertRange(end(), span.begin(), span.end()); }
+	void appendSpan(Span<const T> span) { insertRange(end(), span.begin(), span.end()); }
 
 	void prepend(const T& v) { insert(begin(), v); }
 
@@ -723,8 +723,8 @@ struct FixedVector {
 		emplace(begin(), std::forward<Args>(args)...);
 	}
 
-	void prependSlice(Slice<T> slice) { insertRange(begin(), slice.begin(), slice.end()); }
-	void prependSlice(Slice<const T> slice) { insertRange(begin(), slice.begin(), slice.end()); }
+	void prependSpan(Span<T> span) { insertRange(begin(), span.begin(), span.end()); }
+	void prependSpan(Span<const T> span) { insertRange(begin(), span.begin(), span.end()); }
 
 	template <typename It>
 	void assignRange(It first, It last)
@@ -736,7 +736,7 @@ struct FixedVector {
 		count_ = assignCount;
 	}
 
-	void assignSlice(Slice<const T> slice) { assignRange(slice.begin(), slice.end()); }
+	void assignSpan(Span<const T> span) { assignRange(span.begin(), span.end()); }
 
 	void resize(usize newCount)
 	{
@@ -776,8 +776,8 @@ struct FixedVector {
 		count_ = 0;
 	}
 
-	operator Slice<T>() { return Slice(begin(), end()); }
-	operator Slice<const T>() const { return Slice(begin(), end()); }
+	operator Span<T>() { return Span(begin(), end()); }
+	operator Span<const T>() const { return Span(begin(), end()); }
 
 	usize count_ = 0;
 	alignas(T) u8 data_[Capacity * sizeof(T)] = {};

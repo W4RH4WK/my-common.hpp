@@ -32,16 +32,16 @@ namespace MY {
 ////////////////////////////////////////////////////////////
 // String Interpolation
 
-usize sFormat(Slice<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
+usize sFormat(Span<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	int n = vsnprintf(dst.data, dst.count, fmt, args);
+	int n = vsnprintf(dst.data, dst.size, fmt, args);
 	va_end(args);
 	if (n < 0)
 		return 0;
-	if (usize(n) > dst.count)
-		return dst.count;
+	if (usize(n) > dst.size)
+		return dst.size;
 	return usize(n) + 1 /* terminator */;
 }
 
