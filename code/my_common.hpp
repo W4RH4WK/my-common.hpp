@@ -503,7 +503,7 @@ struct Span {
 	constexpr explicit operator bool() const { return !empty(); }
 
 	constexpr bool empty() const { return size == 0; }
-	constexpr usize sizebytes() const { return sizeof(T) * size; }
+	constexpr usize sizeBytes() const { return sizeof(T) * size; }
 
 	constexpr T* begin() const { return data; }
 	constexpr T* end() const { return data + size; }
@@ -532,7 +532,7 @@ struct Span {
 	template <typename TT>
 	constexpr Span<TT> as() const
 	{
-		return Span<TT>(reinterpret_cast<TT*>(data), sizebytes() / sizeof(TT));
+		return Span<TT>(reinterpret_cast<TT*>(data), sizeBytes() / sizeof(TT));
 	}
 
 	T* data = nullptr;
@@ -607,7 +607,7 @@ struct FixedVector {
 	    requires(std::is_copy_constructible_v<T>)
 	{
 		std::uninitialized_copy(other.begin(), other.end(), begin());
-		count_ = other.count_;
+		size_ = other.size_;
 	}
 
 	FixedVector& operator=(const FixedVector& other)
@@ -616,7 +616,7 @@ struct FixedVector {
 		if (&other != this) {
 			clear();
 			std::uninitialized_copy(other.begin(), other.end(), begin());
-			count_ = other.count_;
+			size_ = other.size_;
 		}
 		return *this;
 	}
@@ -625,7 +625,7 @@ struct FixedVector {
 	    requires(std::is_nothrow_move_constructible_v<T>)
 	{
 		std::uninitialized_move(other.begin(), other.end(), begin());
-		count_ = other.count_;
+		size_ = other.size_;
 		other.clear();
 	}
 
@@ -635,42 +635,42 @@ struct FixedVector {
 		if (&other != this) {
 			clear();
 			std::uninitialized_move(other.begin(), other.end(), begin());
-			count_ = other.count_;
+			size_ = other.size_;
 			other.clear();
 		}
 		return *this;
 	}
 
-	usize count() const { return count_; }
-	usize byteCount() const { return count_ * sizeof(T); }
+	usize size() const { return size_; }
+	usize sizeBytes() const { return sizeof(T) * size_; }
 	usize capacity() const { return Capacity; }
 
-	bool empty() const { return count_ == 0; }
-	bool full() const { return count_ == Capacity; }
+	bool empty() const { return size_ == 0; }
+	bool full() const { return size_ == Capacity; }
 
 	T* data() { return reinterpret_cast<T*>(data_); }
 	const T* data() const { return reinterpret_cast<const T*>(data_); }
 
 	T* begin() { return data(); }
 	const T* begin() const { return data(); }
-	T* end() { return data() + count_; }
-	const T* end() const { return data() + count_; }
+	T* end() { return data() + size_; }
+	const T* end() const { return data() + size_; }
 
 	T* operator[](usize index)
 	{
-		MY_ASSERT(index < count_, nullptr);
+		MY_ASSERT(index < size_, nullptr);
 		return data() + index;
 	}
 	const T* operator[](usize index) const
 	{
-		MY_ASSERT(index < count_, nullptr);
+		MY_ASSERT(index < size_, nullptr);
 		return data() + index;
 	}
 
 	T* front() { return operator[](0); }
 	const T* front() const { return operator[](0); }
-	T* back() { return operator[](count_ - 1); }
-	const T* back() const { return operator[](count_ - 1); }
+	T* back() { return operator[](size_ - 1); }
+	const T* back() const { return operator[](size_ - 1); }
 
 	template <typename... Args>
 	void emplace(T* pos, Args&&... args)
@@ -679,7 +679,7 @@ struct FixedVector {
 		MY_ASSERT(begin() <= pos && pos <= end());
 		relocateUninitBackward(pos, pos + 1, end() + 1);
 		std::construct_at(pos, std::forward<Args>(args)...);
-		count_++;
+		size_++;
 	}
 
 	void insert(T* pos, const T& v) { emplace(pos, v); }
@@ -687,12 +687,12 @@ struct FixedVector {
 	template <typename It>
 	void insertRange(T* pos, It first, It last)
 	{
-		usize insertCount = std::distance(first, last);
-		MY_ASSERT(insertCount <= Capacity - count_);
+		usize insertSize = std::distance(first, last);
+		MY_ASSERT(insertSize <= Capacity - size_);
 		MY_ASSERT(begin() <= pos && pos <= end());
-		relocateUninitBackward(pos, pos + insertCount, end() + insertCount);
+		relocateUninitBackward(pos, pos + insertSize, end() + insertSize);
 		std::uninitialized_copy(first, last, pos);
-		count_ += insertCount;
+		size_ += insertSize;
 	}
 
 	void insertSpan(T* pos, Span<T> span) { insertRange(pos, span.begin(), span.end()); }
@@ -729,33 +729,33 @@ struct FixedVector {
 	template <typename It>
 	void assignRange(It first, It last)
 	{
-		usize assignCount = std::distance(first, last);
-		MY_ASSERT(assignCount <= Capacity);
+		usize assignSize = std::distance(first, last);
+		MY_ASSERT(assignSize <= Capacity);
 		clear();
 		std::uninitialized_copy(first, last, begin());
-		count_ = assignCount;
+		size_ = assignSize;
 	}
 
 	void assignSpan(Span<const T> span) { assignRange(span.begin(), span.end()); }
 
-	void resize(usize newCount)
+	void resize(usize newSize)
 	{
-		MY_ASSERT(newCount <= Capacity);
-		if (newCount < count_)
-			removeRange(begin() + newCount, end());
+		MY_ASSERT(newSize <= Capacity);
+		if (newSize < size_)
+			removeRange(begin() + newSize, end());
 		else
-			std::uninitialized_default_construct(end(), end() + newCount);
-		count_ = newCount;
+			std::uninitialized_default_construct(end(), end() + newSize);
+		size_ = newSize;
 	}
 
-	void resizeWith(usize newCount, const T& v)
+	void resizeWith(usize newSize, const T& v)
 	{
-		MY_ASSERT(newCount <= Capacity);
-		if (newCount < count_)
-			removeRange(begin() + newCount, end());
+		MY_ASSERT(newSize <= Capacity);
+		if (newSize < size_)
+			removeRange(begin() + newSize, end());
 		else
-			std::uninitialized_fill(end(), end() + newCount, v);
-		count_ = newCount;
+			std::uninitialized_fill(end(), end() + newSize, v);
+		size_ = newSize;
 	}
 
 	void remove(T* pos) { removeRange(pos, pos + 1); }
@@ -767,19 +767,19 @@ struct FixedVector {
 		MY_ASSERT(begin() <= last && last <= end());
 		T* rem = relocateUninit(last, end(), first);
 		std::destroy(rem, end());
-		count_ -= last - first;
+		size_ -= last - first;
 	}
 
 	void clear()
 	{
 		std::destroy(begin(), end());
-		count_ = 0;
+		size_ = 0;
 	}
 
 	operator Span<T>() { return Span(begin(), end()); }
 	operator Span<const T>() const { return Span(begin(), end()); }
 
-	usize count_ = 0;
+	usize size_ = 0;
 	alignas(T) u8 data_[Capacity * sizeof(T)] = {};
 };
 
