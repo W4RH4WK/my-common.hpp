@@ -351,13 +351,13 @@ struct Vec2T {
 };
 
 template <typename T>
-const Vec2T<T> Vec2T<T>::Up{0, -1};
+constinit const Vec2T<T> Vec2T<T>::Up(0, -1);
 template <typename T>
-const Vec2T<T> Vec2T<T>::Down{0, 1};
+constinit const Vec2T<T> Vec2T<T>::Down(0, 1);
 template <typename T>
-const Vec2T<T> Vec2T<T>::Left{-1, 0};
+constinit const Vec2T<T> Vec2T<T>::Left(-1, 0);
 template <typename T>
-const Vec2T<T> Vec2T<T>::Right{1, 0};
+constinit const Vec2T<T> Vec2T<T>::Right(1, 0);
 
 template <typename T>
 constexpr T dot(Vec2T<T> a, Vec2T<T> b)
