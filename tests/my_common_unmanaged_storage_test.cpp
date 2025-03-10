@@ -4,7 +4,7 @@
 
 using namespace MY;
 
-TEST_CASE("UnmanagedStorage does not construct automatically", "[unmanaged_storage]")
+TEST_CASE("UnmanagedStorage does not construct automatically", "[UnmanagedStorage]")
 {
 	struct FailOnConstruction {
 		FailOnConstruction() { REQUIRE(false); }
@@ -13,7 +13,7 @@ TEST_CASE("UnmanagedStorage does not construct automatically", "[unmanaged_stora
 	UnmanagedStorage<FailOnConstruction> storage;
 }
 
-TEST_CASE("UnmanagedStorage does not destruct automatically", "[unmanaged_storage]")
+TEST_CASE("UnmanagedStorage does not destruct automatically", "[UnmanagedStorage]")
 {
 	struct FailOnDestruction {
 		~FailOnDestruction() { REQUIRE(false); }
@@ -23,7 +23,7 @@ TEST_CASE("UnmanagedStorage does not destruct automatically", "[unmanaged_storag
 	storage.init();
 }
 
-TEST_CASE("UnmanagedStorage allows manual con- / destruction", "[unmanaged_storage]")
+TEST_CASE("UnmanagedStorage allows manual con- / destruction", "[UnmanagedStorage]")
 {
 	struct Foo {
 		Foo(int* sentinel) : sentinel_(sentinel) { *sentinel = 1; }
@@ -46,7 +46,7 @@ TEST_CASE("UnmanagedStorage allows manual con- / destruction", "[unmanaged_stora
 	REQUIRE(sentinel == 2);
 }
 
-TEST_CASE("UnmanagedStorage allows re-initialization", "[unmanaged_storage]")
+TEST_CASE("UnmanagedStorage allows re-initialization", "[UnmanagedStorage]")
 {
 	struct Foo {
 		Foo(int* initCount, int* deinitCount) : deinitCount_(deinitCount) { (*initCount)++; }
@@ -75,7 +75,7 @@ TEST_CASE("UnmanagedStorage allows re-initialization", "[unmanaged_storage]")
 	REQUIRE(deinitCount == 2);
 }
 
-TEST_CASE("UnmanagedStorage get asserts", "[unmanaged_storage]")
+TEST_CASE("UnmanagedStorage get asserts", "[UnmanagedStorage]")
 {
 	static int assertCount = 0;
 	onAssert = +[](const char*, const char*, long) noexcept { assertCount++; };

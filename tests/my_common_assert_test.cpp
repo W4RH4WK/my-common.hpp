@@ -5,7 +5,7 @@
 using namespace MY;
 using namespace Catch::Matchers;
 
-TEST_CASE("Assert returns from current function", "[assert]")
+TEST_CASE("Assert returns from current function", "[Assert]")
 {
 	[]() {
 		MY_ASSERT(false);
@@ -21,7 +21,7 @@ TEST_CASE("Assert returns from current function", "[assert]")
 	REQUIRE(x == -1);
 }
 
-TEST_CASE("Assert invoke onAssert callback", "[assert]")
+TEST_CASE("Assert invoke onAssert callback", "[Assert]")
 {
 	static const char* lastCondition;
 	onAssert = +[](const char* condition, const char*, long) noexcept { lastCondition = condition; };
@@ -31,7 +31,7 @@ TEST_CASE("Assert invoke onAssert callback", "[assert]")
 	REQUIRE_THAT(lastCondition, Equals("false"));
 }
 
-TEST_CASE("Assert emits a log message", "[assert]")
+TEST_CASE("Assert emits a log message", "[Assert]")
 {
 	static const char* lastMsg;
 	static LogSeverity lastSeverity;
@@ -46,7 +46,7 @@ TEST_CASE("Assert emits a log message", "[assert]")
 	REQUIRE(lastSeverity == LogSeverity::Error);
 }
 
-TEST_CASE("onAssert callback disabled in tests by default", "[assert]")
+TEST_CASE("onAssert callback disabled in tests by default", "[Assert]")
 {
 	REQUIRE(onAssert == nullptr);
 }

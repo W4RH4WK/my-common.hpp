@@ -4,7 +4,7 @@
 
 using namespace MY;
 
-TEST_CASE("sCmp", "[string_utils]")
+TEST_CASE("sCmp", "[StringUtils]")
 {
 	REQUIRE(sCmp("abc", "abc") == 0);
 	REQUIRE(sCmp("abc", "abd") < 0);
@@ -16,7 +16,7 @@ TEST_CASE("sCmp", "[string_utils]")
 	REQUIRE(sCmp("", "a") < 0);
 }
 
-TEST_CASE("sEq", "[string_utils]")
+TEST_CASE("sEq", "[StringUtils]")
 {
 	REQUIRE(sEq("abc", "abc"));
 	REQUIRE_FALSE(sEq("abc", "abd"));
@@ -28,7 +28,7 @@ TEST_CASE("sEq", "[string_utils]")
 	REQUIRE_FALSE(sEq("", "a"));
 }
 
-TEST_CASE("sLess", "[string_utils]")
+TEST_CASE("sLess", "[StringUtils]")
 {
 	REQUIRE_FALSE(sLess("abc", "abc"));
 	REQUIRE(sLess("abc", "abd"));
@@ -40,14 +40,14 @@ TEST_CASE("sLess", "[string_utils]")
 	REQUIRE(sLess("", "a"));
 }
 
-TEST_CASE("sFormat", "[string_utils]")
+TEST_CASE("sFormat", "[StringUtils]")
 {
 	char buffer[64];
 	auto n = sFormat(buffer, "Hello World");
 	REQUIRE(n == 12);
 }
 
-TEST_CASE("sFormat exceeds buffer", "[string_utils]")
+TEST_CASE("sFormat exceeds buffer", "[StringUtils]")
 {
 	char buffer[10];
 	auto n = sFormat(buffer, "Hello World");

@@ -2,7 +2,7 @@
 
 #include "catch_amalgamated.hpp"
 
-TEST_CASE("Defer is executed at end of scope", "[defer]")
+TEST_CASE("Defer is executed at end of scope", "[Defer]")
 {
 	int i = 0;
 	{
@@ -13,7 +13,7 @@ TEST_CASE("Defer is executed at end of scope", "[defer]")
 	REQUIRE(i == 1);
 }
 
-TEST_CASE("Defer is executed in reverse order", "[defer]")
+TEST_CASE("Defer is executed in reverse order", "[Defer]")
 {
 	int i = 0;
 	{

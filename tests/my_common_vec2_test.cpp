@@ -5,7 +5,7 @@ using Catch::Approx;
 
 namespace MY {
 
-TEST_CASE("Vec2 initialization and conversion", "[vec2]")
+TEST_CASE("Vec2 initialization and conversion", "[Vec2]")
 {
 	Vec2 v1;
 	REQUIRE(v1.x == 0.0f);
@@ -25,20 +25,20 @@ TEST_CASE("Vec2 initialization and conversion", "[vec2]")
 	REQUIRE(v4.y == 4.0f);
 }
 
-TEST_CASE("Vec2 length and lengthSq", "[vec2]")
+TEST_CASE("Vec2 length and lengthSq", "[Vec2]")
 {
 	Vec2 v1(3.0f, 4.0f);
 	REQUIRE(v1.lengthSq() == Approx(25.0).epsilon(0.01));
 	REQUIRE(v1.length() == Approx(5.0).epsilon(0.01));
 }
 
-TEST_CASE("Vec2 ratio", "[vec2]")
+TEST_CASE("Vec2 ratio", "[Vec2]")
 {
 	Vec2 v1(4.0f, 2.0f);
 	REQUIRE(v1.ratio() == Approx(2.0).epsilon(0.01));
 }
 
-TEST_CASE("Vec2 normalize", "[vec2]")
+TEST_CASE("Vec2 normalize", "[Vec2]")
 {
 	Vec2 v0;
 	v0.normalize();
@@ -49,7 +49,7 @@ TEST_CASE("Vec2 normalize", "[vec2]")
 	REQUIRE(v1.length() == Approx(1.0).epsilon(0.01));
 }
 
-TEST_CASE("Vec2 clampLength", "[vec2]")
+TEST_CASE("Vec2 clampLength", "[Vec2]")
 {
 	Vec2 v1(3.0f, 4.0f);
 	v1.clampLength(2.5);

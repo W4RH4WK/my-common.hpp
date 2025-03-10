@@ -5,7 +5,7 @@
 using namespace MY;
 using namespace Catch::Matchers;
 
-TEST_CASE("Log messages invoke onLog callback", "[log]")
+TEST_CASE("Log messages invoke onLog callback", "[Log]")
 {
 	static const char* lastMsg;
 	static LogSeverity lastSeverity;
@@ -20,7 +20,7 @@ TEST_CASE("Log messages invoke onLog callback", "[log]")
 	REQUIRE(lastSeverity == LogSeverity::Info);
 }
 
-TEST_CASE("Trace logs should be emitted through a use case specific macro", "[log]")
+TEST_CASE("Trace logs should be emitted through a use case specific macro", "[Log]")
 {
 #define MY_TRACE_INPUT(...) MY_LOG(::MY::LogSeverity::Trace, __VA_ARGS__) // <-- this one is active
 #define MY_TRACE_AUDIO(...) // MY_LOG(::MY::LogSeverity::Trace, __VA_ARGS__) // <-- this one is disabled
@@ -29,7 +29,7 @@ TEST_CASE("Trace logs should be emitted through a use case specific macro", "[lo
 	MY_TRACE_AUDIO("Audio %d", 42);
 }
 
-TEST_CASE("onLog callback disabled in tests by default", "[log]")
+TEST_CASE("onLog callback disabled in tests by default", "[Log]")
 {
 	REQUIRE(onLog == nullptr);
 }
