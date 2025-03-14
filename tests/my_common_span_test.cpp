@@ -10,7 +10,6 @@ TEST_CASE("Span default constructor", "[Span]")
 	REQUIRE(s.data == nullptr);
 	REQUIRE(s.size == 0);
 	REQUIRE(s.empty());
-	REQUIRE(!s);
 }
 
 TEST_CASE("Span constructor with data and size", "[Span]")
@@ -20,7 +19,6 @@ TEST_CASE("Span constructor with data and size", "[Span]")
 	REQUIRE(s.data == arr);
 	REQUIRE(s.size == 5);
 	REQUIRE(!s.empty());
-	REQUIRE(s);
 }
 
 TEST_CASE("Span constructor with begin and end", "[Span]")
@@ -30,7 +28,6 @@ TEST_CASE("Span constructor with begin and end", "[Span]")
 	REQUIRE(s.data == arr);
 	REQUIRE(s.size == 5);
 	REQUIRE(!s.empty());
-	REQUIRE(s);
 }
 
 TEST_CASE("Span constructor with native array", "[Span]")
@@ -40,7 +37,6 @@ TEST_CASE("Span constructor with native array", "[Span]")
 	REQUIRE(s.data == arr);
 	REQUIRE(s.size == 5);
 	REQUIRE(!s.empty());
-	REQUIRE(s);
 }
 
 TEST_CASE("Span constructor with another span", "[Span]")
@@ -51,7 +47,6 @@ TEST_CASE("Span constructor with another span", "[Span]")
 	REQUIRE(s2.data == arr);
 	REQUIRE(s2.size == 5);
 	REQUIRE(!s2.empty());
-	REQUIRE(s2);
 }
 
 TEST_CASE("Span operator[]", "[Span]")

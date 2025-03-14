@@ -192,8 +192,8 @@ usize sFormat(Span<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...);
 #define MY_ASSERT(...) MY_EXPAND(MY_ASSERT_OVERLOAD(__VA_ARGS__, MY_ASSERT2, MY_ASSERT1)(__VA_ARGS__))
 #define MY_ASSERT_OVERLOAD(_1, _2, NAME, ...) NAME
 
-using OnAssert = void (*)(const char* condition, const char* file, long line) noexcept;
-extern OnAssert onAssert;
+using OnAssert = void(const char* condition, const char* file, long line) noexcept;
+extern OnAssert* onAssert;
 
 ////////////////////////////////////////////////////////////
 // Logging
@@ -237,8 +237,8 @@ inline constexpr char toChar(LogSeverity severity)
 	return '?';
 }
 
-using OnLog = void (*)(LogSeverity, const char* message, const char* file, long line) noexcept;
-extern OnLog onLog;
+using OnLog = void(LogSeverity, const char* message, const char* file, long line) noexcept;
+extern OnLog* onLog;
 
 ////////////////////////////////////////////////////////////
 // Defer
@@ -500,8 +500,6 @@ struct Span {
 	{
 	}
 
-	constexpr explicit operator bool() const { return !empty(); }
-
 	constexpr bool empty() const { return size == 0; }
 	constexpr usize sizeBytes() const { return sizeof(T) * size; }
 
@@ -577,8 +575,8 @@ T* relocateUninitBackward(T* first, T* last, T* dstLast)
 // Allocator
 
 struct Allocator {
-	using OnAlloc = void* (*)(void* userdata, usize size, usize alignment) noexcept;
-	using OnDealloc = void (*)(void* userdata, void* ptr) noexcept;
+	using OnAlloc = void*(void* userdata, usize size, usize alignment) noexcept;
+	using OnDealloc = void(void* userdata, void* ptr) noexcept;
 
 	constexpr Allocator(OnAlloc onAlloc, OnDealloc onDealloc, void* userdata)
 	    : onAlloc_(onAlloc), onDealloc_(onDealloc), userdata_(userdata)
@@ -588,8 +586,8 @@ struct Allocator {
 	void* alloc(usize size, usize alignment = 1) const noexcept { return onAlloc_(userdata_, size, alignment); }
 	void dealloc(void* ptr) const noexcept { onDealloc_(userdata_, ptr); }
 
-	OnAlloc onAlloc_ = nullptr;
-	OnDealloc onDealloc_ = nullptr;
+	OnAlloc* onAlloc_ = nullptr;
+	OnDealloc* onDealloc_ = nullptr;
 	void* userdata_ = nullptr;
 };
 
@@ -789,6 +787,8 @@ struct FixedVector {
 
 	usize size_ = 0;
 	alignas(T) u8 data_[Capacity * sizeof(T)] = {};
+
+	static_assert(Capacity > 0);
 };
 
 ////////////////////////////////////////////////////////////
@@ -801,7 +801,7 @@ inline constexpr i32 sCmp(const char* a, const char* b)
 		a++;
 		b++;
 	}
-	return *reinterpret_cast<const u8*>(a) - *reinterpret_cast<const u8*>(b);
+	return std::bit_cast<u8>(*a) - std::bit_cast<u8>(*b);
 }
 
 inline constexpr bool sEq(const char* a, const char* b)

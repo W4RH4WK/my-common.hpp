@@ -48,7 +48,7 @@ usize sFormat(Span<char> dst, MY_ATTR_PRINTF_PARAM(const char* fmt), ...)
 ////////////////////////////////////////////////////////////
 // Assertion
 
-constinit OnAssert onAssert = +[](const char*, const char*, long) noexcept { abort(); };
+constinit OnAssert* onAssert = +[](const char*, const char*, long) noexcept { abort(); };
 
 ////////////////////////////////////////////////////////////
 // Logging
@@ -57,7 +57,7 @@ thread_local char g_logBuffer[MY_LOG_BUFFER_SIZE];
 
 static constinit std::mutex g_logMutex;
 
-OnLog onLog = +[](LogSeverity severity, const char* msg, const char* file, long line) noexcept {
+constinit OnLog* onLog = +[](LogSeverity severity, const char* msg, const char* file, long line) noexcept {
 	std::lock_guard guard(g_logMutex);
 	printf("%c [%s:%ld] %s\n", toChar(severity), file, line, msg);
 	if (severity >= LogSeverity::Warning) {
