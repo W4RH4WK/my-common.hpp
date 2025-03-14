@@ -545,7 +545,7 @@ inline constexpr u64 hash(Span<T> span)
 }
 
 ////////////////////////////////////////////////////////////
-// Container Utils
+// Memory Utils
 
 template <typename T>
 T* relocateUninit(T* first, T* last, T* dstFirst)
@@ -813,6 +813,82 @@ inline constexpr bool sLess(const char* a, const char* b)
 {
 	return sCmp(a, b) < 0;
 }
+
+inline constexpr usize sLength(const char* s)
+{
+	MY_ASSERT(s, 0);
+	usize length = 0;
+	while (s[length] != '\0')
+		length++;
+	return length;
+}
+
+////////////////////////////////////////////////////////////
+// Fixed String
+
+template <usize Capacity>
+struct FixedString {
+	constexpr FixedString() = default;
+	constexpr FixedString(const char* s) { *this = s; }
+
+	constexpr FixedString& operator=(const char* s)
+	{
+		usize size = sLength(s);
+		MY_ASSERT(size <= Capacity - 1, *this);
+		for (usize i = 0; i < size + 1; i++) {
+			data_[i] = s[i];
+		}
+		size_ = size;
+		return *this;
+	}
+
+	constexpr FixedString(const FixedString&) = default;
+	constexpr FixedString& operator=(const FixedString&) = default;
+	constexpr FixedString(FixedString&&) noexcept = default;
+	constexpr FixedString& operator=(FixedString&&) noexcept = default;
+
+	constexpr void clear()
+	{
+		for (usize i = 0; i < size_; i++) {
+			data_[i] = '\0';
+		}
+		size_ = 0;
+	}
+
+	constexpr char* data() { return data_; }
+	constexpr const char* data() const { return data_; }
+	constexpr const char* c_str() const { return data_; }
+
+	constexpr usize size() const { return size_; }
+	constexpr usize capacity() const { return Capacity; }
+
+	constexpr bool empty() const { return size_ == 0; }
+	constexpr bool full() const { return size_ == Capacity - 1; }
+
+	constexpr char* begin() { return data_; }
+	constexpr char* end() { return data_ + size_; }
+	constexpr const char* begin() const { return data_; }
+	constexpr const char* end() const { return data_ + size_; }
+
+	constexpr char* operator[](usize index)
+	{
+		MY_ASSERT(index < size_, nullptr);
+		return &data_[index];
+	}
+	constexpr const char* operator[](usize index) const
+	{
+		MY_ASSERT(index < size_, nullptr);
+		return &data_[index];
+	}
+
+	constexpr operator Span<char>() { return Span(begin(), end()); }
+	constexpr operator Span<const char>() const { return Span(begin(), end()); }
+
+	usize size_ = 0;
+	char data_[Capacity + 1] = {};
+
+	static_assert(Capacity > 0);
+};
 
 ////////////////////////////////////////////////////////////
 // Unmanaged Storage
